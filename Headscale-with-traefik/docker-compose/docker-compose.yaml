@@ -1,0 +1,102 @@
+version: '3.9'
+
+services:
+  headscale:
+    image: headscale/headscale:latest
+    pull_policy: always
+    container_name: headscale
+    restart: unless-stopped
+    command: headscale serve
+#    ports:
+#      - 8080:8080
+#      - 9090:9090
+    networks:
+       proxy:
+    volumes:
+      - /root/docker/headscale/config:/etc/headscale
+      - /root/docker/headscale/config/data:/var/lib/headscale
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.headscale.rule=PathPrefix(`/`) && Host(`hs.example.com`)"
+      - traefik.http.services.headscale.loadbalancer.server.port=8080
+      - "traefik.http.routers.headscale.entrypoints=http"
+      - "traefik.http.middlewares.headscale-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.headscale.middlewares=headscale-https-redirect"
+      - "traefik.http.routers.headscale-secure.entrypoints=https"
+      - "traefik.http.routers.headscale-secure.rule=PathPrefix(`/`) && Host(`hs.example.com`)"
+      - "traefik.http.routers.headscale-secure.tls=true"
+      - "traefik.http.routers.headscale-secure.tls.certresolver=godaddy"
+      - "traefik.http.routers.headscale-secure.service=headscale"
+      - "traefik.docker.network=proxy"
+
+
+  headscale-ui:
+    image: ghcr.io/gurucomputing/headscale-ui:latest
+    pull_policy: always
+    container_name: headscale-ui
+    restart: unless-stopped
+    networks:
+       proxy:
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.headscale-ui.rule=PathPrefix(`/web`) && Host(`hs.example.com`)"
+      - traefik.http.services.headscale-ui.loadbalancer.server.port=80
+      - "traefik.http.routers.headscale-ui.entrypoints=http"
+      - "traefik.http.middlewares.headscale-ui-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.headscale-ui.middlewares=headscale-https-redirect"
+      - "traefik.http.routers.headscale-ui-secure.entrypoints=https"
+      - "traefik.http.routers.headscale-ui-secure.rule=PathPrefix(`/web`) && Host(`hs.example.com`)"
+      - "traefik.http.routers.headscale-ui-secure.tls=true"
+      - "traefik.http.routers.headscale-ui-secure.tls.certresolver=godaddy"
+      - "traefik.http.routers.headscale-ui-secure.service=headscale-ui"
+      - "traefik.docker.network=proxy"
+
+
+#
+  traefik:
+    image: traefik:latest
+    pull_policy: always
+    restart: unless-stopped
+    container_name: traefik
+    command:
+#      - --api.insecure=true # remove in production
+      - --providers.docker
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --global.sendAnonymousUsage=false
+    networks:
+       proxy:
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - GODADDY_API_KEY=<SuperSecretAPIKEY>
+      - GODADDY_API_SECRET=<EvenMoreSecret-Secret-SHHHH!>
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /root/docker/headscale/traefik/traefik.yml:/traefik.yml:ro
+      - /root/docker/headscale/traefik/acme.json:/acme.json
+      - /root/docker/headscale/traefik/config.yml:/config.yml:ro
+      - /root/docker/headscale/traefik/logs:/var/log/traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik-dashboard.example.com`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$SomeSecretHASH$$$"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.example.com`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=godaddy"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=example.com"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.example.com"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+
+networks:
+  proxy:
+    name: proxy

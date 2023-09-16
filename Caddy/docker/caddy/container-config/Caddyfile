@@ -1,0 +1,3 @@
+https://hs.example.com {
+    reverse_proxy * http://headscale:8080
+}

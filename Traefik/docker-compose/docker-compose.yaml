@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+       proxy:
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - GODADDY_API_KEY=<SuperSecretKeyName>
+      - GODADDY_API_SECRET=<APISecret>
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /root/docker/headscale/traefik/traefik.yml:/traefik.yml:ro
+      - /root/docker/headscale/traefik/acme.json:/acme.json
+      - /root/docker/headscale/traefik/config.yml:/config.yml:ro
+      - /root/docker/headscale/traefik/logs:/var/log/traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik-dashboard.example.ca`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$somecrazysecretkey$$"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.example.ca`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=godaddy"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=example.ca"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.example.ca"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+
+networks:
+  proxy:
+    name: proxy
