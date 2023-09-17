@@ -6,12 +6,17 @@ https://www.youtube.com/watch?v=OECp6Pj2ihg
 
 https://github.com/JamesTurland/JimsGarage/tree/main/Headscale
 
-\* ~~currently not working properly. I can connect to traefik dashboard, but not headscale.
+\* ~~currently not working properly. I can connect to traefik dashboard, but not headscale.~~
+
+I did manage to get it working with caddy, but only with HTTP challenges for LetsEncrypt. 
+I wasnt able to get it working with DNS challeges yet.
+So, back to using Traefik. 
 
 Update 9-15-2023 - Its now working!!!
 I was missing some traefik labels on my containers. 
 This link helped
 https://stackoverflow.com/questions/58138650/traefik-version-2-only-shows-404-or-no-website-at-all
+Hopefully i remembered everything...
 
 Step 1, on the host server (i used an alpine linux box) install docker and docker compose, and configure to autostart
 
